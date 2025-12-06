@@ -83,6 +83,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="container">
         <h2>Giriş Yap</h2>
 
+
         <?php if (!empty($errors)): ?>
             <div class="error">
                 <?php foreach ($errors as $error): ?>
