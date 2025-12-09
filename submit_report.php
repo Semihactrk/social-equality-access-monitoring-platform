@@ -19,6 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Form verilerini al
     $baslik = trim($_POST['baslik']);
     $aciklama = trim($_POST['aciklama']);
+    $sdg_kategori = $_POST['sdg_kategori']; // Yeni Alan
     $enlem = $_POST['enlem'];
     $boylam = $_POST['boylam'];
     $kullanici_id = $_SESSION['user_id']; // Raporu gönderen kullanıcının ID'si
@@ -30,14 +31,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Hata yoksa veritabanına kaydet
     if (empty($errors)) {
-        $sql = "INSERT INTO raporlar (kullanici_id, baslik, aciklama, enlem, boylam) VALUES (?, ?, ?, ?, ?)";
-        
-        if ($stmt = $conn->prepare($sql)) {
-            // Parametreleri bağla
-            // i: integer (kullanici_id)
-            // s: string (baslik, aciklama)
-            // d: double (enlem, boylam)
-            $stmt->bind_param("issdd", $kullanici_id, $baslik, $aciklama, $enlem, $boylam);
+        // Fotoğraf koduyla birleşmiş hali:
+    $sql = "INSERT INTO raporlar (kullanici_id, baslik, aciklama, enlem, boylam, fotograf_yolu, sdg_kategori) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    if ($stmt = $conn->prepare($sql)) {
+    // 's' sayısı arttı (7 parametre oldu): issddss
+    $stmt->bind_param("issddss", $kullanici_id, $baslik, $aciklama, $enlem, $boylam, $fotograf_yolu, $sdg_kategori);
 
             // Sorguyu çalıştır
             if ($stmt->execute()) {

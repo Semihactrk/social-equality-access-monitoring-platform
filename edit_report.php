@@ -36,8 +36,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 // --- SAYFA YÜKLENDİĞİNDE RAPOR BİLGİLERİNİ ÇEK ---
-$sql = "SELECT r.id, r.baslik, r.aciklama, r.durum, r.olusturma_tarihi, k.kullanici_adi 
-        FROM raporlar r 
+$sql = "SELECT r.id, r.baslik, r.aciklama, r.durum, r.olusturma_tarihi, r.fotograf_yolu, k.kullanici_adi 
+        FROM raporlar r ...
         JOIN kullanicilar k ON r.kullanici_id = k.id 
         WHERE r.id = ?";
 
@@ -82,6 +82,12 @@ $conn->close();
             <p><strong>Gönderen:</strong> <?php echo htmlspecialchars($rapor['kullanici_adi']); ?></p>
             <p><strong>Tarih:</strong> <?php echo date('d/m/Y H:i', strtotime($rapor['olusturma_tarihi'])); ?></p>
             <p><strong>Açıklama:</strong><br><?php echo nl2br(htmlspecialchars($rapor['aciklama'])); ?></p>
+            <?php if (!empty($rapor['fotograf_yolu'])): ?>
+    <div style="margin-top: 15px; border: 1px solid #ddd; padding: 5px; display: inline-block;">
+        <strong>Kanıt Fotoğrafı:</strong><br>
+        <img src="<?php echo htmlspecialchars($rapor['fotograf_yolu']); ?>" alt="Rapor Kanıtı" style="max-width: 100%; height: auto; max-height: 400px; margin-top: 5px;">
+    </div>
+<?php endif; ?>
         </div>
 
         <form action="edit_report.php?id=<?php echo $rapor['id']; ?>" method="post">

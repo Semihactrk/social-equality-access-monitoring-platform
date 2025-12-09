@@ -16,7 +16,7 @@ $kullanici_id = $_SESSION['user_id'];
 
 // Sadece bu kullanıcıya ait raporları, en yeniden eskiye doğru sıralayarak çek
 $raporlar = [];
-$sql = "SELECT baslik, aciklama, durum, olusturma_tarihi FROM raporlar WHERE kullanici_id = ? ORDER BY olusturma_tarihi DESC";
+$sql = "SELECT baslik, aciklama, durum, olusturma_tarihi, fotograf_yolu FROM raporlar WHERE kullanici_id = ? ORDER BY olusturma_tarihi DESC";
 
 if ($stmt = $conn->prepare($sql)) {
     $stmt->bind_param("i", $kullanici_id);
@@ -66,7 +66,10 @@ $conn->close();
         <?php if (!empty($raporlar)): ?>
             <?php foreach ($raporlar as $rapor): ?>
                 <div class="report">
-                    <h3><?php echo htmlspecialchars($rapor['baslik']); ?></h3>
+    <?php if (!empty($rapor['fotograf_yolu'])): ?>
+        <img src="<?php echo htmlspecialchars($rapor['fotograf_yolu']); ?>" alt="Kanit Fotoğrafi" style="max-width: 200px; float:right; margin-left:10px; border-radius:5px;">
+    <?php endif; ?>
+    <h3><?php echo htmlspecialchars($rapor['baslik']); ?></h3>
                     <div class="report-meta">
                         <span>Tarih: <?php echo date('d/m/Y H:i', strtotime($rapor['olusturma_tarihi'])); ?></span> | 
                         <span>Durum: 
