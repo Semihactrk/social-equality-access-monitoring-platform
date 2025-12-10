@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'yetkili') {
     exit();
 }
 
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 $yetkili_id = $_SESSION['user_id'];
 
 // 1. Üstlenilecek Raporları Çek (durum = 'beklemede')

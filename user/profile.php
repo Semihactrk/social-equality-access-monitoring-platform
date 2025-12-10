@@ -4,12 +4,12 @@ session_start();
 
 // Kullanıcı giriş yapmamışsa, login sayfasına yönlendir
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: ../auth/login.php");
     exit();
 }
 
 // Veritabanı bağlantısı
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
 // Giriş yapmış kullanıcının ID'sini session'dan al
 $kullanici_id = $_SESSION['user_id'];
@@ -53,9 +53,9 @@ $conn->close();
 <body>
 
     <div class="navbar">
-        <a href="index.php">Ana Sayfa (Harita)</a>
+        <a href="../index.php">Ana Sayfa (Harita)</a>
         <a href="submit_report.php">Rapor Gönder</a>
-        <a href="logout.php">Çıkış Yap</a>
+        <a href="../logout.php">Çıkış Yap</a>
     </div>
 
     <div class="container">

@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
 // URL'den konu ID'sini al, geçerli değilse foruma yönlendir
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {

@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'admin') {
     exit();
 }
 
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
 // URL'den gelen rapor ID'sini al
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {

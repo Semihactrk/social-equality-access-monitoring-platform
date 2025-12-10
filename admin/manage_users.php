@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'admin') {
     exit();
 }
 
-require_once 'includes/db_connect.php';
+require_once '..includes/db_connect.php';
 
 // Adminin kendi kendini silmesini veya rolünü değiştirmesini engellemek için
 // o anki admin hariç tüm kullanıcıları listele

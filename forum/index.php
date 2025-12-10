@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
 // Tüm forum konularını, açan kullanıcının adıyla birlikte çek
 $konular = [];
@@ -36,16 +36,17 @@ $conn->close();
 </head>
 <body>
     <div class="navbar">
-        <a href="index.php">Ana Sayfa</a>
+        <a href="../index.php">Ana Sayfa</a>
+
         <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="profile.php">Profilim</a>
-            <a href="logout.php">Çıkış Yap</a>
+            <a href="../user/profile.php">Profilim</a>
+            
+            <a href="../auth/logout.php">Çıkış Yap</a>
         <?php else: ?>
-            <a href="login.php">Giriş Yap</a>
-            <a href="register.php">Kayıt Ol</a>
+            <a href="../auth/login.php">Giriş Yap</a>
+            <a href="../auth/register.php">Kayıt Ol</a>
         <?php endif; ?>
     </div>
-
     <div class="container">
         <h1>Forum Tartışma Başlıkları</h1>
 

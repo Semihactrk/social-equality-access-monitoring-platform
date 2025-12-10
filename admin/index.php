@@ -5,12 +5,12 @@ session_start();
 // Kullanıcının giriş yapıp yapmadığını ve rolünün 'admin' olup olmadığını kontrol et
 if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'admin') {
     // Eğer giriş yapmamışsa veya admin değilse, ana sayfaya yönlendir
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit();
 }
 
 // Admin ise, sayfanın geri kalanı yüklenir...
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
 // Tüm raporları, kullanıcı adlarıyla birlikte çekmek için JOIN sorgusu
 $raporlar = [];

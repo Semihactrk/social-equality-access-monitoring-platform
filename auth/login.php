@@ -12,7 +12,7 @@ if (isset($_SESSION['user_id'])) {
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
 $errors = [];
 
@@ -46,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['rol'] = $user['rol'];
                 
                 // Kullanıcıyı ana sayfaya yönlendir
-                header("Location: index.php");
+                header("Location: ../index.php");
                 exit();
 
             } else {
