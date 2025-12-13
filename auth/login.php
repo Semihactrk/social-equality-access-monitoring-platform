@@ -1,23 +1,32 @@
 <?php
 session_start();
-include '../includes/db_connect.php';
+include '../includes/db_connect.php'; // Include database connection
 $error = "";
 
+// Check if the form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $password = $_POST['password'];
 
-    // Secure Login Logic
+    // Secure Login Logic using Prepared Statements (Prevents SQL Injection)
     $stmt = $conn->prepare("SELECT id, password, role FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($row = $result->fetch_assoc()) {
+        // Verify the hashed password
         if (password_verify($password, $row['password'])) {
+            // Set session variables
             $_SESSION['user_id'] = $row['id'];
             $_SESSION['role'] = $row['role']; 
-            header("Location: ../user/resources.php");
+
+            // Intelligent Redirection based on Role
+            if ($row['role'] === 'admin') {
+                header("Location: ../admin/dashboard.php"); // Redirect Admin to Dashboard
+            } else {
+                header("Location: ../user/resources.php"); // Redirect Student to Resources
+            }
             exit();
         } else {
             $error = "Invalid password.";
@@ -38,6 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="hero-center">
         <div class="auth-card">
             <h2 style="color: var(--primary);">Welcome Back</h2>
+            
             <?php if($error) echo "<p class='error-msg' style='display:block'>$error</p>"; ?>
             
             <form method="POST" action="">
