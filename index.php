@@ -2,8 +2,7 @@
 session_start();
 require_once 'includes/db_connect.php';
 
-// Fetch reports from database (Includes Photo and SDG data)
-// We are filtering out 'resolved' (cozuldu) cases to keep the map clean, per logic.
+// Fetch active reports from database (Excluding 'resolved' cases to keep map clean)
 $reports = [];
 $sql = "SELECT baslik, aciklama, enlem, boylam, fotograf_yolu, sdg_kategori, durum FROM raporlar WHERE durum != 'cozuldu'"; 
 $result = $conn->query($sql);
@@ -15,6 +14,7 @@ if ($result && $result->num_rows > 0) {
 }
 $conn->close();
 
+// Convert PHP array to JSON for JavaScript
 $reports_json = json_encode($reports);
 ?>
 <!DOCTYPE html>
@@ -80,47 +80,45 @@ $reports_json = json_encode($reports);
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // Initialize Map
-        // Coordinates: Istanbul (Default) - Change if needed
+        // 1. Initialize Map (Default: Istanbul coordinates)
         var map = L.map('map', { zoomControl: false }).setView([41.015137, 28.979530], 12);
 
-        // Add Zoom Control to Top Right (Square buttons per request)
+        // 2. Add Zoom Control (Top Right)
         L.control.zoom({
             position: 'topright'
         }).addTo(map);
 
-        // Tile Layer (OpenStreetMap)
+        // 3. Load Tile Layer (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap'
         }).addTo(map);
 
-        // Load PHP Data
+        // 4. Load Data from PHP
         var reportsData = <?php echo $reports_json; ?>;
 
-        // Loop through reports and add markers
+        // 5. Loop through reports and create markers
         reportsData.forEach(function(report) {
             var marker = L.marker([report.enlem, report.boylam]).addTo(map);
             
-            // Prepare Popup Content (English)
+            // Build Popup Content
             var popupContent = `<div style="text-align:left;">`;
             
-            // 1. SDG Tag
+            // SDG Category Tag
             if (report.sdg_kategori) {
                 popupContent += `<span class='sdg-tag'>${report.sdg_kategori}</span><br>`;
             }
 
-            // 2. Title & Description
+            // Title & Description
             popupContent += `<h3 style="margin: 10px 0 5px 0; font-size:16px;">${report.baslik}</h3>`;
             popupContent += `<p style="margin:0; color:#666;">${report.aciklama}</p>`;
 
-            // 3. Image (if exists)
+            // Photo (if available)
             if (report.fotograf_yolu) {
                 popupContent += `<img src='${report.fotograf_yolu}' class='popup-img' alt='Report Image'>`;
             }
 
-            // 4. Status
-            // Translate status for UI display
+            // Status Badge Logic
             let statusText = report.durum;
             if(statusText === 'beklemede') statusText = 'Pending';
             if(statusText === 'islemde') statusText = 'In Progress';
@@ -131,7 +129,7 @@ $reports_json = json_encode($reports);
             marker.bindPopup(popupContent);
         });
 
-        // Mobile Menu Toggle Script
+        // Mobile Menu Toggle
         function toggleMenu() {
             var menu = document.getElementById("navbarMenu");
             menu.classList.toggle("active");
