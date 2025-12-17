@@ -1,35 +1,26 @@
 <?php
-// Session (oturum) yönetimi her zaman en üstte başlatılmalıdır!
+// Session management starts here - DO NOT TOUCH
 session_start();
 
-// Eğer kullanıcı zaten giriş yapmışsa, onu ana sayfaya yönlendir
 if (isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    header("Location: ../index.php");
     exit();
 }
-
-// Gerekirse hataları görmek için
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
 
 require_once '../includes/db_connect.php';
 
 $errors = [];
 
-// Form gönderilmiş mi kontrol et
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $kullanici_adi_veya_email = trim($_POST['kullanici_adi_veya_email']);
     $sifre = $_POST['sifre'];
 
     if (empty($kullanici_adi_veya_email) || empty($sifre)) {
-        $errors[] = "Tüm alanlar doldurulmalıdır.";
+        $errors[] = "All fields are required.";
     } else {
-        // Kullanıcıyı veritabanında ara (kullanıcı adı VEYA email ile)
         $sql = "SELECT id, kullanici_adi, sifre, rol FROM kullanicilar WHERE kullanici_adi = ? OR email = ?";
         $stmt = $conn->prepare($sql);
         
-        // --- DÜZELTİLEN SATIR BURASI ---
-        // Sorguda 2 tane '?' olduğu için, 2 tane string ('ss') ve 2 tane değişken göndermeliyiz.
         $stmt->bind_param("ss", $kullanici_adi_veya_email, $kullanici_adi_veya_email);
         
         $stmt->execute();
@@ -38,22 +29,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
 
-            // Gönderilen şifre ile veritabanındaki hash'lenmiş şifreyi doğrula
             if (password_verify($sifre, $user['sifre'])) {
-                // Giriş Başarılı! Session bilgilerini ayarla
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['kullanici_adi'] = $user['kullanici_adi'];
                 $_SESSION['rol'] = $user['rol'];
                 
-                // Kullanıcıyı ana sayfaya yönlendir
                 header("Location: ../index.php");
                 exit();
 
             } else {
-                $errors[] = "Kullanıcı adı veya şifre hatalı.";
+                $errors[] = "Incorrect username or password.";
             }
         } else {
-            $errors[] = "Kullanıcı adı veya şifre hatalı.";
+            $errors[] = "Incorrect username or password.";
         }
         $stmt->close();
     }
@@ -61,50 +49,56 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş Yap - Şehrin Nabzı</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f4f4f4; line-height: 1.6; }
-        .container { max-width: 400px; margin: 50px auto; padding: 20px 30px; border: 1px solid #ddd; border-radius: 8px; background-color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        h2 { text-align: center; color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button { width: 100%; padding: 10px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        .error { color: #D8000C; background-color: #FFD2D2; padding: 10px; margin: 10px 0; border-radius: 4px; border: 1px solid #D8000C; }
-        .form-footer { text-align: center; margin-top: 15px; }
-    </style>
+    <title>Login - Social Equality Platform</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <h2>Giriş Yap</h2>
+    
+    <nav class="navbar">
+        <div class="navbar-brand">Social Equality Map</div>
+        <div class="navbar-menu">
+            <a href="../index.php">Home</a>
+            <a href="register.php">Register</a>
+        </div>
+    </nav>
 
-        <?php if (!empty($errors)): ?>
-            <div class="error">
-                <?php foreach ($errors as $error): ?>
-                    <p style="margin: 0;"><?php echo $error; ?></p>
-                <?php endforeach; ?>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Welcome Back</h2>
+                <p style="color: var(--text-muted);">Login to report issues.</p>
             </div>
-        <?php endif; ?>
 
-        <form action="login.php" method="post" novalidate>
-            <div class="form-group">
-                <label for="kullanici_adi_veya_email">Kullanıcı Adı veya E-posta:</label>
-                <input type="text" id="kullanici_adi_veya_email" name="kullanici_adi_veya_email" required>
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-error">
+                    <?php foreach ($errors as $error): ?>
+                        <p><?php echo $error; ?></p>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <form action="login.php" method="post" novalidate>
+                <div class="form-group">
+                    <label for="kullanici_adi_veya_email">Username or Email</label>
+                    <input type="text" id="kullanici_adi_veya_email" name="kullanici_adi_veya_email" required placeholder="Enter your username">
+                </div>
+                <div class="form-group">
+                    <label for="sifre">Password</label>
+                    <input type="password" id="sifre" name="sifre" required placeholder="Enter your password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="register.php">Register Now</a></p>
             </div>
-            <div class="form-group">
-                <label for="sifre">Şifre:</label>
-                <input type="password" id="sifre" name="sifre" required>
-            </div>
-            <button type="submit">Giriş Yap</button>
-        </form>
-        <div class="form-footer">
-            <p>Hesabın yok mu? <a href="register.php">Hemen Kayıt Ol</a></p>
         </div>
     </div>
+
 </body>
 </html>

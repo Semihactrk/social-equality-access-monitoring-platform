@@ -1,6 +1,6 @@
 <?php
 session_start();
-// Yetkili koruması
+// Official protection
 if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'yetkili') {
     header("Location: index.php");
     exit();
@@ -13,8 +13,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['rapor_id'])) {
     $rapor_id = $_POST['rapor_id'];
     $yetkili_id = $_SESSION['user_id'];
 
-    // Sadece bu yetkiliye ait olan ve durumu 'islemde' olan raporu 'cozuldu' yap
-    // Bu, bir yetkilinin başka bir yetkilinin raporunu kapatmasını engeller.
+    // Mark the report as 'cozuldu' (resolved) only if it belongs to this official and is currently 'islemde' (in progress)
+    // This prevents an official from closing another official's report.
     $sql = "UPDATE raporlar SET durum = 'cozuldu' WHERE id = ? AND ustlenen_yetkili_id = ?";
     
     if ($stmt = $conn->prepare($sql)) {
@@ -25,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['rapor_id'])) {
     $conn->close();
 }
 
-// İşlem bittikten sonra yetkili paneline geri yönlendir
+// Redirect back to the official panel after the operation is complete
 header("Location: official_panel.php");
 exit();
 ?>

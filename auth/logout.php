@@ -1,14 +1,14 @@
 <?php
-// Her zaman olduğu gibi oturumu başlat
+// Start the session as always
 session_start();
 
-// Tüm session değişkenlerini temizle (boş bir diziye eşitle)
+// Clear all session variables (set to an empty array)
 $_SESSION = array();
 
-// Oturumu tamamen sonlandır
+// Completely destroy the session
 session_destroy();
 
-// Kullanıcıyı giriş sayfasına yönlendir
+// Redirect user to the login page
 header("Location: login.php");
 exit;
 ?>

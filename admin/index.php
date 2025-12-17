@@ -1,20 +1,16 @@
 <?php
-// Oturumu başlat
+// Backend Logic - DO NOT TOUCH
 session_start();
 
-// Kullanıcının giriş yapıp yapmadığını ve rolünün 'admin' olup olmadığını kontrol et
 if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'admin') {
-    // Eğer giriş yapmamışsa veya admin değilse, ana sayfaya yönlendir
     header("Location: ../index.php");
     exit();
 }
 
-// Admin ise, sayfanın geri kalanı yüklenir...
 require_once '../includes/db_connect.php';
 
-// Tüm raporları, kullanıcı adlarıyla birlikte çekmek için JOIN sorgusu
 $raporlar = [];
-$sql = "SELECT r.id, r.baslik, r.durum, r.olusturma_tarihi, k.kullanici_adi 
+$sql = "SELECT r.id, r.baslik, r.durum, r.olusturma_tarihi, r.guncelleme_tarihi, k.kullanici_adi 
         FROM raporlar r 
         JOIN kullanicilar k ON r.kullanici_id = k.id 
         ORDER BY r.olusturma_tarihi DESC";
@@ -28,57 +24,109 @@ if ($result) {
 $conn->close();
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Paneli - Şehrin Nabzı</title>
+    <title>Admin Dashboard - Social Equality Platform</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1 { border-bottom: 2px solid #333; padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #333; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        .logout-link { display: block; text-align: right; margin-bottom: 20px; }
+        .status-badge {
+            padding: 4px 8px; border-radius: 4px; color: white; font-size: 0.8rem; font-weight: bold; text-transform: uppercase;
+        }
+        .status-beklemede { background-color: #f1c40f; color: #333; }
+        .status-islemde { background-color: var(--primary-blue); }
+        .status-cozuldu { background-color: var(--primary-green); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="logout.php" class="logout-link">Güvenli Çıkış Yap</a>
-        <a href="manage_users.php" style="display: block; margin-bottom: 20px;">Kullanıcıları Yönet &raquo;</a>
-        <h1>Admin Paneli - Tüm Raporlar</h1>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Başlık</th>
-                    <th>Gönderen Kullanıcı</th>
-                    <th>Tarih</th>
-                    <th>Durum</th>
-                    <th>İşlemler</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($raporlar)): ?>
-                    <?php foreach ($raporlar as $rapor): ?>
+
+    <div class="dashboard-layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">Admin Panel</div>
+            <div class="sidebar-menu">
+                <a href="../index.php">
+                    <i class="fas fa-map-marked-alt"></i> &nbsp; Public Map
+                </a>
+                <a href="index.php" class="active">
+                    <i class="fas fa-list-alt"></i> &nbsp; Manage Reports
+                </a>
+                <a href="manage_users.php">
+                    <i class="fas fa-users"></i> &nbsp; Manage Users
+                </a>
+                <a href="../auth/logout.php" style="color: #e74c3c;">
+                    <i class="fas fa-sign-out-alt"></i> &nbsp; Logout
+                </a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <h2 style="margin-bottom: 20px;">All Reports Overview</h2>
+
+            <?php if (isset($_GET['status']) && $_GET['status'] == 'updated'): ?>
+                <div class="alert alert-success">Report status updated successfully.</div>
+            <?php endif; ?>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
                         <tr>
-                            <td><?php echo $rapor['id']; ?></td>
-                            <td><?php echo htmlspecialchars($rapor['baslik']); ?></td>
-                            <td><?php echo htmlspecialchars($rapor['kullanici_adi']); ?></td>
-                            <td><?php echo date('d/m/Y H:i', strtotime($rapor['olusturma_tarihi'])); ?></td>
-                            <td><?php echo htmlspecialchars($rapor['durum']); ?></td>
-                            <td><a href="edit_report.php?id=<?php echo $rapor['id']; ?>">Detay/Değiştir</a></td> </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="6">Sistemde hiç rapor bulunmuyor.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Reported By</th>
+                            <th style="width: 20%;">Dates</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (!empty($raporlar)): ?>
+                            <?php foreach ($raporlar as $rapor): ?>
+                                <tr>
+                                    <td>#<?php echo $rapor['id']; ?></td>
+                                    <td><?php echo htmlspecialchars($rapor['baslik']); ?></td>
+                                    <td><?php echo htmlspecialchars($rapor['kullanici_adi']); ?></td>
+                                    
+                                    <td>
+                                        <span style="display: block; font-weight: 600; font-size: 0.95rem; color: #34495e;">
+                                            Gönderildi: <?php echo date('d M Y, H:i', strtotime($rapor['olusturma_tarihi'])); ?>
+                                        </span>
+                                        
+                                        <?php 
+                                            // Sadece guncelleme_tarihi, oluşturma tarihinden farklıysa göster
+                                            if ($rapor['guncelleme_tarihi'] && strtotime($rapor['guncelleme_tarihi']) > strtotime($rapor['olusturma_tarihi'])): 
+                                        ?>
+                                            <span style="display: block; font-size: 0.9rem; color: var(--primary-green);">
+                                                Güncellendi: <?php echo date('d M Y, H:i', strtotime($rapor['guncelleme_tarihi'])); ?>
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
+                                    
+                                    <td>
+                                        <span class="status-badge status-<?php echo $rapor['durum']; ?>">
+                                            <?php 
+                                                // Translate status
+                                                if($rapor['durum'] == 'beklemede') echo 'Pending';
+                                                elseif($rapor['durum'] == 'islemde') echo 'In Progress';
+                                                else echo 'Resolved';
+                                            ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="edit_report.php?id=<?php echo $rapor['id']; ?>" class="btn btn-primary" style="padding: 5px 10px; font-size: 0.8rem;">Edit / View</a>
+                                    </td> 
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" class="text-center">No reports found.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 </body>
 </html>

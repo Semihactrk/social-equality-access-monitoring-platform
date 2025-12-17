@@ -1,22 +1,19 @@
 <?php
-// Oturumu başlat
+// Backend Logic - DO NOT TOUCH
 session_start();
 
-// Kullanıcı giriş yapmamışsa, login sayfasına yönlendir
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../auth/login.php");
     exit();
 }
 
-// Veritabanı bağlantısı
 require_once '../includes/db_connect.php';
 
-// Giriş yapmış kullanıcının ID'sini session'dan al
 $kullanici_id = $_SESSION['user_id'];
-
-// Sadece bu kullanıcıya ait raporları, en yeniden eskiye doğru sıralayarak çek
 $raporlar = [];
-$sql = "SELECT baslik, aciklama, durum, olusturma_tarihi FROM raporlar WHERE kullanici_id = ? ORDER BY olusturma_tarihi DESC";
+
+// Fetch user's reports
+$sql = "SELECT id, baslik, aciklama, durum, olusturma_tarihi, guncelleme_tarihi FROM raporlar WHERE kullanici_id = ? ORDER BY olusturma_tarihi DESC";
 
 if ($stmt = $conn->prepare($sql)) {
     $stmt->bind_param("i", $kullanici_id);
@@ -31,56 +28,157 @@ if ($stmt = $conn->prepare($sql)) {
 $conn->close();
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profilim - Şehrin Nabzı</title>
+    <title>My Profile - Social Equality Platform</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .navbar { background-color: #333; color: white; padding: 15px; text-align: right; }
-        .navbar a { color: white; text-decoration: none; margin-left: 15px; }
-        .container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .report { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
-        .report h3 { margin-top: 0; }
-        .report-meta { font-size: 0.9em; color: #777; margin-bottom: 10px; }
-        .report-status { display: inline-block; padding: 3px 8px; border-radius: 12px; color: white; font-weight: bold; text-transform: capitalize; }
-        .status-beklemede { background-color: #ffc107; }
-        .status-islemde { background-color: #17a2b8; }
-        .status-cozuldu { background-color: #28a745; }
+        /* Page Specific Styles for Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: var(--radius);
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+        }
+        /* Renkler style.css'deki SDG paletine uyarlanmıştır */
+        .status-beklemede { background-color: #f1c40f; color: #333; } /* Yellow */
+        .status-islemde { background-color: var(--primary-blue); } /* Blue */
+        .status-cozuldu { background-color: var(--primary-green); } /* Green */
+
+        .report-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+        .report-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--primary-blue);
+        }
+        .report-date {
+            color: #999;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
 
-    <div class="navbar">
-        <a href="../index.php">Ana Sayfa (Harita)</a>
-        <a href="submit_report.php">Rapor Gönder</a>
-        <a href="../logout.php">Çıkış Yap</a>
-    </div>
+    <div class="dashboard-layout">
+        
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                User Panel
+            </div>
+            <div class="sidebar-menu">
+                <a href="../index.php">
+                    <i class="fas fa-map-marked-alt"></i> &nbsp; Back to Home Map
+                </a>
+                <a href="profile.php" class="active">
+                    <i class="fas fa-chart-line"></i> &nbsp; My Reports
+                </a>
+                <a href="submit_report.php">
+                    <i class="fas fa-plus-circle"></i> &nbsp; Submit New Report
+                </a>
+                <a href="../forum/index.php">
+                    <i class="fas fa-comments"></i> &nbsp; Community Forum
+                </a>
+                <a href="../auth/logout.php" style="color: #e74c3c;">
+                    <i class="fas fa-sign-out-alt"></i> &nbsp; Logout
+                </a>
+            </div>
+        </nav>
 
-    <div class="container">
-        <h2><?php echo htmlspecialchars($_SESSION['kullanici_adi']); ?> Profili</h2>
-        <hr>
-        <h3>Gönderdiğim Raporlar</h3>
+        <main class="main-content">
+            <h2 style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 25px;">
+                Welcome, <?php echo htmlspecialchars($_SESSION['kullanici_adi']); ?>
+            </h2>
 
-        <?php if (!empty($raporlar)): ?>
-            <?php foreach ($raporlar as $rapor): ?>
-                <div class="report">
-                    <h3><?php echo htmlspecialchars($rapor['baslik']); ?></h3>
-                    <div class="report-meta">
-                        <span>Tarih: <?php echo date('d/m/Y H:i', strtotime($rapor['olusturma_tarihi'])); ?></span> | 
-                        <span>Durum: 
-                            <span class="report-status status-<?php echo htmlspecialchars($rapor['durum']); ?>">
-                                <?php echo htmlspecialchars($rapor['durum']); ?>
+            <h3>My Submitted Reports</h3>
+            
+            <?php if (!empty($raporlar)): ?>
+                <?php foreach ($raporlar as $rapor): ?>
+                    <div class="report-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <span class="report-date" style="display:block; color:#999;">
+                                    Submitted: 
+                                    <?php 
+                                        // Eğer oluşturma tarihi geçerliyse göster
+                                        if (!empty($rapor['olusturma_tarihi']) && strtotime($rapor['olusturma_tarihi'])) {
+                                            echo date('d M Y, H:i', strtotime($rapor['olusturma_tarihi']));
+                                        } else {
+                                            echo 'Tarih Bilgisi Yok';
+                                        }
+                                    ?>
+                                </span>
+                                
+                                <?php 
+                                    // 1. Guncelleme tarihi boş mu? 
+                                    // 2. Guncelleme tarihi 1970 mi? (Hata kontrolü) 
+                                    // 3. Guncelleme tarihi, oluşturma tarihinden farklı mı?
+                                    
+                                    $guncelleme_timestamp = strtotime($rapor['guncelleme_tarihi']);
+                                    $olusturma_timestamp = strtotime($rapor['olusturma_tarihi']);
+                                    
+                                    // Sadece geçerli bir zaman damgası varsa VE oluşturma zamanından büyükse göster
+                                    if ($guncelleme_timestamp && $guncelleme_timestamp > $olusturma_timestamp): 
+                                ?>
+                                    <span class="report-date" style="display:block; color:var(--primary-blue); font-weight: 600;">
+                                        Updated: <?php echo date('d M Y, H:i', $guncelleme_timestamp); ?>
+                                    </span>
+                                <?php endif; ?>
+
+                                <h4 style="margin: 0 0 10px 0; color: var(--primary-blue);">
+                                
+
+
+
+                                    <a href="../report_details.php?id=<?php echo $rapor['id']; ?>">
+                                        <?php echo htmlspecialchars($rapor['baslik']); ?>
+                                    </a>
+                                </h4>
+                            </div>
+                            
+                            <?php
+                                $statusClass = 'status-beklemede';
+                                $statusLabel = 'Pending';
+                                
+                                if($rapor['durum'] == 'islemde') {
+                                    $statusClass = 'status-islemde';
+                                    $statusLabel = 'In Progress';
+                                } elseif($rapor['durum'] == 'cozuldu') {
+                                    $statusClass = 'status-cozuldu';
+                                    $statusLabel = 'Resolved';
+                                }
+                            ?>
+                            <span class="status-badge <?php echo $statusClass; ?>">
+                                <?php echo $statusLabel; ?>
                             </span>
-                        </span>
+                        </div>
+                        
+                        <p style="color: #555; margin-top: 10px;">
+                            <?php echo nl2br(htmlspecialchars($rapor['aciklama'])); ?>
+                        </p>
                     </div>
-                    <p><?php echo nl2br(htmlspecialchars($rapor['aciklama'])); ?></p>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="alert alert-info" style="background: #e3f2fd; color: #0d47a1; padding: 20px;">
+                    You haven't submitted any reports yet. 
+                    <a href="submit_report.php" style="font-weight: bold; text-decoration: underline;">Submit your first report now.</a>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p>Henüz hiç rapor göndermediniz.</p>
-        <?php endif; ?>
+            <?php endif; ?>
+
+        </main>
     </div>
 
 </body>

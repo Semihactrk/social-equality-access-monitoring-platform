@@ -1,15 +1,14 @@
 <?php
+// Backend Logic - DO NOT TOUCH
 session_start();
-// Admin koruması
+
 if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'admin') {
     header("Location: index.php");
     exit();
 }
 
-require_once '..includes/db_connect.php';
+require_once '../includes/db_connect.php';
 
-// Adminin kendi kendini silmesini veya rolünü değiştirmesini engellemek için
-// o anki admin hariç tüm kullanıcıları listele
 $current_admin_id = $_SESSION['user_id'];
 $kullanicilar = [];
 $sql = "SELECT id, kullanici_adi, email, rol FROM kullanicilar WHERE id != ?";
@@ -26,65 +25,92 @@ if ($stmt = $conn->prepare($sql)) {
 $conn->close();
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kullanıcı Yönetimi - Admin Paneli</title>
-    <link rel="stylesheet" href="assets/css/style.css"> <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1 { border-bottom: 2px solid #333; padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #333; color: white; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
-        select, button { padding: 5px; }
-        .actions-form { display: flex; align-items: center; gap: 10px; }
+    <title>Manage Users - Admin Panel</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .role-badge {
+            display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; text-transform: capitalize;
+        }
+        .role-admin { background-color: var(--primary-red); color: white; }
+        .role-yetkili { background-color: var(--primary-blue); color: white; }
+        .role-vatandas { background-color: #ccc; color: var(--text-main); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="admin.php">&laquo; Rapor Yönetimine Geri Dön</a>
-        <h1>Kullanıcı Yönetimi</h1>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Kullanıcı Adı</th>
-                    <th>E-posta</th>
-                    <th>Rol</th>
-                    <th>İşlemler</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($kullanicilar as $kullanici): ?>
-                    <tr>
-                        <td><?php echo $kullanici['id']; ?></td>
-                        <td><?php echo htmlspecialchars($kullanici['kullanici_adi']); ?></td>
-                        <td><?php echo htmlspecialchars($kullanici['email']); ?></td>
-                        <td>
-                            <form class="actions-form" action="update_role.php" method="POST">
-                                <input type="hidden" name="user_id" value="<?php echo $kullanici['id']; ?>">
-                                <select name="new_role">
-                                    <option value="vatandas" <?php if($kullanici['rol'] == 'vatandas') echo 'selected'; ?>>Vatandaş</option>
-                                    <option value="yetkili" <?php if($kullanici['rol'] == 'yetkili') echo 'selected'; ?>>Yetkili</option>
-                                    <option value="admin" <?php if($kullanici['rol'] == 'admin') echo 'selected'; ?>>Admin</option>
-                                </select>
-                                <button type="submit">Değiştir</button>
-                            </form>
-                        </td>
-                        <td>
-                            <form action="delete_user.php" method="POST" onsubmit="return confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!');">
-                                <input type="hidden" name="user_id" value="<?php echo $kullanici['id']; ?>">
-                                <button type="submit">Sil</button>
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+    <div class="dashboard-layout">
+        <nav class="sidebar">
+            <div class="sidebar-header">Admin Panel</div>
+            <div class="sidebar-menu">
+                <a href="../index.php">
+                    <i class="fas fa-map-marked-alt"></i> &nbsp; Public Map
+                </a>
+                <a href="index.php">
+                    <i class="fas fa-list-alt"></i> &nbsp; Manage Reports
+                </a>
+                <a href="manage_users.php" class="active">
+                    <i class="fas fa-users"></i> &nbsp; Manage Users
+                </a>
+                <a href="../auth/logout.php" style="color: #e74c3c;">
+                    <i class="fas fa-sign-out-alt"></i> &nbsp; Logout
+                </a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <h2 style="margin-bottom: 20px;">User Management</h2>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th style="width: 250px;">Update Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($kullanicilar as $kullanici): ?>
+                            <tr>
+                                <td><?php echo $kullanici['id']; ?></td>
+                                <td><strong><?php echo htmlspecialchars($kullanici['kullanici_adi']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($kullanici['email']); ?></td>
+                                <td>
+                                    <span class="role-badge role-<?php echo $kullanici['rol']; ?>">
+                                        <?php echo ucfirst($kullanici['rol']); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <form action="update_role.php" method="POST" style="display:flex; gap:5px;">
+                                        <input type="hidden" name="user_id" value="<?php echo $kullanici['id']; ?>">
+                                        <select name="new_role" class="form-control" style="padding: 5px; width: auto; font-size: 0.9rem;">
+                                            <option value="vatandas" <?php if($kullanici['rol'] == 'vatandas') echo 'selected'; ?>>Citizen</option>
+                                            <option value="yetkili" <?php if($kullanici['rol'] == 'yetkili') echo 'selected'; ?>>Official</option>
+                                            <option value="admin" <?php if($kullanici['rol'] == 'admin') echo 'selected'; ?>>Admin</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size:0.8rem;">Save</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form action="delete_user.php" method="POST" onsubmit="return confirm('Are you sure you want to delete this user? This cannot be undone!');">
+                                        <input type="hidden" name="user_id" value="<?php echo $kullanici['id']; ?>">
+                                        <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size:0.8rem;">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 </body>
 </html>

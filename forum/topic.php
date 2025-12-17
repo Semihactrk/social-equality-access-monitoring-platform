@@ -2,26 +2,25 @@
 session_start();
 require_once '../includes/db_connect.php';
 
-// URL'den konu ID'sini al, geçerli değilse foruma yönlendir
+// Backend Logic - DO NOT TOUCH
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header("Location: forum.php");
+    header("Location: index.php");
     exit();
 }
 $konu_id = $_GET['id'];
 
-// --- YENİ YORUM GÖNDERİLDİYSE İŞLE ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['yorum_metni'])) {
-    // Yorum yapmak için giriş yapmış olmak zorunlu
     if (isset($_SESSION['user_id'])) {
         $yorum_metni = trim($_POST['yorum_metni']);
         $kullanici_id = $_SESSION['user_id'];
 
         if (!empty($yorum_metni)) {
-            $sql_insert_yorum = "INSERT INTO yorumlar (konu_id, kullanici_id, yorum_metni) VALUES (?, ?, ?)";
+            // EKLEME SORGUSU: DB'deki sütun adları kullanıldı (rapor_id, yorum)
+            $sql_insert_yorum = "INSERT INTO yorumlar (rapor_id, kullanici_id, yorum) VALUES (?, ?, ?)";
             if ($stmt = $conn->prepare($sql_insert_yorum)) {
+                // Konu ID'si, rapor_id sütununa yazılır
                 $stmt->bind_param("iis", $konu_id, $kullanici_id, $yorum_metni);
                 $stmt->execute();
-                // Formu tekrar göndermeyi engellemek için aynı sayfaya yönlendir
                 header("Location: topic.php?id=" . $konu_id);
                 exit();
             }
@@ -29,10 +28,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['yorum_metni'])) {
     }
 }
 
-// --- SAYFA İÇERİĞİNİ VERİTABANINDAN ÇEK ---
-
-// 1. Konu başlığını çek
-$sql_konu = "SELECT t.baslik, k.kullanici_adi FROM forum_konulari t JOIN kullanicilar k ON t.kullanici_id = k.id WHERE t.id = ?";
+// Fetch Topic
+// Forum konusu tablosunda tarih sütunu: olusturma_tarihi
+$sql_konu = "SELECT t.baslik, k.kullanici_adi, t.olusturma_tarihi FROM forum_konulari t JOIN kullanicilar k ON t.kullanici_id = k.id WHERE t.id = ?";
 $konu = null;
 if($stmt = $conn->prepare($sql_konu)) {
     $stmt->bind_param("i", $konu_id);
@@ -41,17 +39,19 @@ if($stmt = $conn->prepare($sql_konu)) {
     if($result->num_rows === 1) {
         $konu = $result->fetch_assoc();
     } else {
-        // Konu bulunamadıysa foruma yönlendir
-        header("Location: forum.php");
+        header("Location: index.php");
         exit();
     }
 }
 
-// 2. Bu konuya ait tüm yorumları çek
+// YORUM ÇEKME SORGUSU: DB'deki sütun adları kullanıldı (rapor_id, yorum, tarih) ve AS ile PHP'nin beklediği isimlere çevrildi
 $yorumlar = [];
-$sql_yorumlar = "SELECT y.yorum_metni, y.olusturma_tarihi, k.kullanici_adi 
-                 FROM yorumlar y JOIN kullanicilar k ON y.kullanici_id = k.id 
-                 WHERE y.konu_id = ? ORDER BY y.olusturma_tarihi ASC";
+$sql_yorumlar = "SELECT y.yorum AS yorum_metni, y.tarih AS olusturma_tarihi, k.kullanici_adi 
+                 FROM yorumlar y 
+                 JOIN kullanicilar k ON y.kullanici_id = k.id 
+                 WHERE y.rapor_id = ? /* Konu ID'sini rapor_id'ye bağlar */
+                 ORDER BY y.tarih ASC"; 
+
 if($stmt = $conn->prepare($sql_yorumlar)) {
     $stmt->bind_param("i", $konu_id);
     $stmt->execute();
@@ -62,39 +62,71 @@ if($stmt = $conn->prepare($sql_yorumlar)) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($konu['baslik']); ?> - Forum</title>
+    <title>Topic Discussion - Social Equality Platform</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; }
-        .topic-header { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-        .comment { border-bottom: 1px solid #eee; padding: 15px 0; }
-        .comment-meta { font-size: 0.9em; color: #555; margin-bottom: 5px; }
-        .comment-body { line-height: 1.6; }
-        .comment-form { margin-top: 30px; padding-top: 20px; border-top: 2px solid #333; }
-        textarea { width: 100%; height: 100px; padding: 10px; box-sizing: border-box; }
-        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        .topic-header {
+            background: #fff;
+            padding: 20px;
+            border-bottom: 2px solid var(--primary-blue);
+            margin-bottom: 30px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+        }
+        .comment-block {
+            background: white;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            margin-bottom: 15px;
+        }
+        .comment-meta {
+            font-size: 0.85rem;
+            color: #777;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .user-name {
+            color: var(--text-main);
+            font-weight: bold;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <p><a href="forum.php">&laquo; Tüm Konulara Geri Dön</a></p>
 
-        <div class="topic-header">
-            <h1><?php echo htmlspecialchars($konu['baslik']); ?></h1>
-            <p><strong><?php echo htmlspecialchars($konu['kullanici_adi']); ?></strong> tarafından başlatıldı.</p>
+    <nav class="navbar">
+        <div class="navbar-brand">Social Equality Map</div>
+        <div class="navbar-menu">
+            <a href="index.php">&laquo; Back to Topics</a>
         </div>
+    </nav>
+
+    <div class="container">
+        
+        <div class="topic-header">
+            <h1 style="margin-top:0; font-size: 1.8rem;"><?php echo htmlspecialchars($konu['baslik']); ?></h1>
+            <p style="margin:0; color: #666;">
+                Started by <span class="user-name"><?php echo htmlspecialchars($konu['kullanici_adi']); ?></span> 
+                on <?php echo date('d M Y, H:i', strtotime($konu['olusturma_tarihi'])); ?>
+            </p>
+        </div>
+
+        <h3>Comments (<?php echo count($yorumlar); ?>)</h3>
 
         <div class="comments-section">
             <?php if (!empty($yorumlar)): ?>
                 <?php foreach ($yorumlar as $yorum): ?>
-                    <div class="comment">
+                    <div class="comment-block">
                         <div class="comment-meta">
-                            <strong><?php echo htmlspecialchars($yorum['kullanici_adi']); ?></strong> yazdı / 
-                            <span><?php echo date('d/m/Y H:i', strtotime($yorum['olusturma_tarihi'])); ?></span>
+                            <span class="user-name"><?php echo htmlspecialchars($yorum['kullanici_adi']); ?></span> 
+                            &bull; 
+                            <?php echo date('d M Y, H:i', strtotime($yorum['olusturma_tarihi'])); ?>
                         </div>
                         <div class="comment-body">
                             <?php echo nl2br(htmlspecialchars($yorum['yorum_metni'])); ?>
@@ -102,19 +134,21 @@ if($stmt = $conn->prepare($sql_yorumlar)) {
                     </div>
                 <?php endforeach; ?>
             <?php else: ?>
-                <p>Bu konuya henüz hiç yorum yapılmamış. İlk yorumu siz yapın!</p>
+                <p style="color: #666; font-style: italic;">No comments yet. Be the first to share your thoughts!</p>
             <?php endif; ?>
         </div>
         
-        <div class="comment-form">
+        <div style="margin-top: 40px; background: #f9f9f9; padding: 20px; border-radius: var(--radius);">
             <?php if (isset($_SESSION['user_id'])): ?>
                 <form action="topic.php?id=<?php echo $konu_id; ?>" method="POST">
-                    <h3>Yorum Yap</h3>
-                    <textarea name="yorum_metni" required></textarea><br>
-                    <button type="submit">Yorumu Gönder</button>
+                    <h4 style="margin-top:0;">Leave a Reply</h4>
+                    <div class="form-group">
+                        <textarea name="yorum_metni" rows="4" class="form-control" required placeholder="Write your comment here..." style="background: white;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Post Comment</button>
                 </form>
             <?php else: ?>
-                <p>Yorum yapmak için <a href="login.php">giriş yapmanız</a> gerekmektedir.</p>
+                <p>Please <a href="../auth/login.php" style="color: var(--primary-blue); font-weight: bold;">login</a> to join the discussion.</p>
             <?php endif; ?>
         </div>
     </div>

@@ -2,7 +2,7 @@
 session_start();
 require_once '../includes/db_connect.php';
 
-// Tüm forum konularını, açan kullanıcının adıyla birlikte çek
+// Backend Logic - DO NOT TOUCH
 $konular = [];
 $sql = "SELECT t.id, t.baslik, t.olusturma_tarihi, k.kullanici_adi 
         FROM forum_konulari t
@@ -18,68 +18,76 @@ if ($result) {
 $conn->close();
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forum - Şehrin Nabzı</title>
-    <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .navbar { background-color: #333; color: white; padding: 15px; text-align: right; }
-        .navbar a { color: white; text-decoration: none; margin-left: 15px; }
-        .container { max-width: 900px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .new-topic-btn { display: inline-block; padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background-color: #f2f2f2; }
-    </style>
+    <title>Community Forum - Social Equality Platform</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
 </head>
 <body>
-    <div class="navbar">
-        <a href="../index.php">Ana Sayfa</a>
 
-        <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="../user/profile.php">Profilim</a>
-            
-            <a href="../auth/logout.php">Çıkış Yap</a>
-        <?php else: ?>
-            <a href="../auth/login.php">Giriş Yap</a>
-            <a href="../auth/register.php">Kayıt Ol</a>
-        <?php endif; ?>
-    </div>
+    <nav class="navbar">
+        <div class="navbar-brand">Social Equality Map</div>
+        <div class="navbar-menu">
+            <a href="../index.php">Home</a>
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <a href="../user/profile.php">My Profile</a>
+                <a href="../auth/logout.php">Logout</a>
+            <?php else: ?>
+                <a href="../auth/login.php">Login</a>
+            <?php endif; ?>
+        </div>
+    </nav>
+
     <div class="container">
-        <h1>Forum Tartışma Başlıkları</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Community Discussions</h2>
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <a href="new_topic.php" class="btn btn-primary">+ Start New Topic</a>
+            <?php endif; ?>
+        </div>
 
-        <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="new_topic.php" class="new-topic-btn">Yeni Konu Aç</a>
-        <?php else: ?>
-            <p>Yeni konu açmak veya yorum yapmak için <a href="login.php">giriş yapmalısınız</a>.</p>
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            <div class="alert alert-info" style="background: #e3f2fd; color: #0d47a1;">
+                Please <a href="../auth/login.php" style="text-decoration: underline; font-weight: bold;">login</a> to start a topic or reply.
+            </div>
         <?php endif; ?>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Başlık</th>
-                    <th>Açan Kullanıcı</th>
-                    <th>Tarih</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($konular)): ?>
-                    <?php foreach ($konular as $konu): ?>
-                        <tr>
-                            <td><a href="topic.php?id=<?php echo $konu['id']; ?>"><?php echo htmlspecialchars($konu['baslik']); ?></a></td>
-                            <td><?php echo htmlspecialchars($konu['kullanici_adi']); ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($konu['olusturma_tarihi'])); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else: ?>
+        <div class="table-responsive">
+            <table>
+                <thead>
                     <tr>
-                        <td colspan="3">Henüz hiç konu açılmamış.</td>
+                        <th style="width: 60%;">Topic Title</th>
+                        <th>Started By</th>
+                        <th>Date</th>
                     </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php if (!empty($konular)): ?>
+                        <?php foreach ($konular as $konu): ?>
+                            <tr>
+                                <td>
+                                    <a href="topic.php?id=<?php echo $konu['id']; ?>" style="color: var(--primary-blue); font-weight: 600; font-size: 1.05rem;">
+                                        <?php echo htmlspecialchars($konu['baslik']); ?>
+                                    </a>
+                                </td>
+                                <td><?php echo htmlspecialchars($konu['kullanici_adi']); ?></td>
+                                <td style="color: #666; font-size: 0.9rem;">
+                                    <?php echo date('d M Y', strtotime($konu['olusturma_tarihi'])); ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="3" class="text-center" style="padding: 30px; color: #999;">
+                                No discussions yet. Be the first to start one!
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>

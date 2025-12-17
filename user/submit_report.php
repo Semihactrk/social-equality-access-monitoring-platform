@@ -1,20 +1,16 @@
 <?php
-// Oturumu başlat
+// Session & Backend Logic - DO NOT TOUCH
 session_start();
 
-// Kullanıcı giriş yapmış mı diye kontrol et
 if (!isset($_SESSION['user_id'])) {
-    // user klasöründen çıkıp auth klasörüne git
     header("Location: ../auth/login.php");
     exit();
 }
 
-// user klasöründen çıkıp includes klasörüne git
 require_once '../includes/db_connect.php';
 
 $errors = [];
 
-// Form gönderilmiş mi diye kontrol et
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $baslik = trim($_POST['baslik']);
     $aciklama = trim($_POST['aciklama']);
@@ -23,7 +19,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sdg_kategori = isset($_POST['sdg_kategori']) ? $_POST['sdg_kategori'] : NULL; 
     $kullanici_id = $_SESSION['user_id'];
     
-    // -- FOTOĞRAF YÜKLEME İŞLEMLERİ --
     $fotograf_yolu = NULL; 
 
     if (isset($_FILES['rapor_foto']) && $_FILES['rapor_foto']['error'] === 0) {
@@ -35,31 +30,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $dosya_uzantisi = strtolower(pathinfo($dosya_adi, PATHINFO_EXTENSION));
 
         if (!in_array($dosya_uzantisi, $izin_verilen_uzantilar)) {
-            $errors[] = "Sadece JPG, JPEG, PNG ve GIF formatında resimler yükleyebilirsiniz.";
+            $errors[] = "Only JPG, JPEG, PNG and GIF files are allowed.";
         }
         elseif ($dosya_boyutu > 5000000) {
-            $errors[] = "Dosya boyutu çok büyük (Maksimum 5MB).";
+            $errors[] = "File size is too large (Max 5MB).";
         }
         else {
             $yeni_dosya_adi = "rapor_" . $kullanici_id . "_" . uniqid() . "." . $dosya_uzantisi;
-            
-            // ÖNEMLİ AYRIM:
-            // 1. PHP'nin dosyayı yüklemesi için fiziksel yol (user klasöründen çıkıp uploads'a git):
             $fiziksel_hedef = "../uploads/" . $yeni_dosya_adi;
-            
-            // 2. Veritabanına yazılacak ve HTML'de görünecek yol (Ana sayfadan uploads'a git):
             $db_hedef = "uploads/" . $yeni_dosya_adi;
 
             if (move_uploaded_file($dosya_gecici_yolu, $fiziksel_hedef)) {
-                $fotograf_yolu = $db_hedef; // Veritabanına ../ olmadan kaydet
+                $fotograf_yolu = $db_hedef;
             } else {
-                $errors[] = "Fotoğraf yüklenirken hata oluştu. '../uploads' klasörü var mı?";
+                $errors[] = "Error uploading file. Check folder permissions.";
             }
         }
     }
 
     if (empty($baslik) || empty($aciklama) || empty($enlem) || empty($boylam)) {
-        $errors[] = "Başlık, açıklama ve konum alanları zorunludur.";
+        $errors[] = "Title, description and location are required.";
     }
 
     if (empty($errors)) {
@@ -69,11 +59,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->bind_param("issddss", $kullanici_id, $baslik, $aciklama, $enlem, $boylam, $fotograf_yolu, $sdg_kategori);
 
             if ($stmt->execute()) {
-                // Başarılı olursa ana sayfaya (haritaya) dön
                 header("Location: ../index.php?report_success=1");
                 exit();
             } else {
-                $errors[] = "Veritabanı hatası: " . $stmt->error;
+                $errors[] = "Database error: " . $stmt->error;
             }
             $stmt->close();
         }
@@ -82,78 +71,86 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 ?>
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yeni Rapor Gönder - Şehrin Nabzı</title>
+    <title>Submit Report - Social Equality Platform</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
-        .container { max-width: 800px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], textarea, input[type="file"], select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        textarea { resize: vertical; height: 100px; }
-        button { padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #218838; }
-        #report-map { height: 400px; width: 100%; margin-bottom: 15px; border-radius: 4px; }
-        .coord-info { font-style: italic; color: #555; }
-        .error { color: #D8000C; background-color: #FFD2D2; padding: 10px; margin-bottom: 15px; border-radius: 4px; }
-        a { text-decoration: none; color: #007bff; }
+        #report-map { height: 400px; width: 100%; border-radius: var(--radius); border: 1px solid var(--border-color); margin-bottom: 10px; }
+        .location-status { display: none; padding: 10px; background-color: #d4edda; color: #155724; border-radius: var(--radius); margin-bottom: 15px; font-weight: bold; }
+        .navbar-menu .btn { padding: 5px 15px; } /* Buton stili için navbar menü düzenlemesi */
     </style>
 </head>
 <body>
+
+    <nav class="navbar">
+        <div class="navbar-brand">Social Equality Map</div>
+        <div class="navbar-menu">
+            <a href="../index.php">Home</a>
+            <a href="profile.php">My Profile</a>
+            <a href="../auth/logout.php">Logout</a>
+        </div>
+    </nav>
+
     <div class="container">
-        <p><a href="../index.php">&laquo; Ana Sayfaya Dön</a></p>
-        
-        <h2>Yeni Hizmet Raporu Oluştur</h2>
-        
-        <?php if (!empty($errors)): ?>
-            <div class="error">
-                <?php foreach ($errors as $error): ?>
-                    <p><?php echo $error; ?></p>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-
-        <p id="coord-text" class="coord-info">Konum seçmek için haritaya tıklayın.</p>
-        <div id="report-map"></div>
-
-        <form action="submit_report.php" method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="baslik">Rapor Başlığı:</label>
-                <input type="text" id="baslik" name="baslik" required>
-            </div>
+        <div style="max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: var(--radius); border: 1px solid var(--border-color);">
             
-            <div class="form-group">
-                <label for="rapor_foto">Fotoğraf Ekle (Opsiyonel):</label>
-                <input type="file" id="rapor_foto" name="rapor_foto" accept="image/*">
-                <small style="color: #666;">Jpg, Png formatında kanıt niteliğinde fotoğraf yükleyebilirsiniz.</small>
-            </div>
-
-            <div class="form-group">
-                <label for="sdg_kategori">İlgili Sürdürülebilir Kalkınma Hedefi (SDG):</label>
-                <select name="sdg_kategori" id="sdg_kategori">
-                    <option value="SDG-11: Sürdürülebilir Şehirler ve Topluluklar">SDG-11: Sürdürülebilir Şehirler ve Topluluklar</option>
-                    <option value="SDG-10: Eşitsizliklerin Azaltılması">SDG-10: Eşitsizliklerin Azaltılması</option>
-                    <option value="SDG-6: Temiz Su ve Sanitasyon">SDG-6: Temiz Su ve Sanitasyon</option>
-                    <option value="SDG-7: Erişilebilir ve Temiz Enerji">SDG-7: Erişilebilir ve Temiz Enerji</option>
-                    <option value="SDG-3: Sağlık ve Kaliteli Yaşam">SDG-3: Sağlık ve Kaliteli Yaşam</option>
-                    <option value="Diğer">Diğer</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="aciklama">Açıklama:</label>
-                <textarea id="aciklama" name="aciklama" required></textarea>
-            </div>
+            <h2 style="border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px; margin-bottom: 20px;">Submit New Report</h2>
             
-            <input type="hidden" id="enlem" name="enlem">
-            <input type="hidden" id="boylam" name="boylam">
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-error">
+                    <?php foreach ($errors as $error): ?>
+                        <p><?php echo $error; ?></p>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
 
-            <button type="submit">Raporu Gönder</button>
-        </form>
+            <label style="font-size: 1.1rem;">1. Select Location on Map <span style="color:red">*</span></label>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Click on the map to pinpoint the issue location.</p>
+            
+            <div id="report-map"></div>
+            <div id="location-msg" class="location-status">Location Selected ✅</div>
+
+            <form action="submit_report.php" method="post" enctype="multipart/form-data">
+                
+                <div class="form-group">
+                    <label for="baslik">Report Title <span style="color:red">*</span></label>
+                    <input type="text" id="baslik" name="baslik" required placeholder="E.g., Broken Water Pipe in Kadikoy">
+                </div>
+                
+                <div class="form-group">
+                    <label for="sdg_kategori">Related SDG Goal</label>
+                    <select name="sdg_kategori" id="sdg_kategori">
+                        <option value="SDG-11: Sürdürülebilir Şehirler ve Topluluklar">SDG-11: Sustainable Cities</option>
+                        <option value="SDG-10: Eşitsizliklerin Azaltılması">SDG-10: Reduced Inequalities</option>
+                        <option value="SDG-6: Temiz Su ve Sanitasyon">SDG-6: Clean Water and Sanitation</option>
+                        <option value="SDG-7: Erişilebilir ve Temiz Enerji">SDG-7: Affordable and Clean Energy</option>
+                        <option value="SDG-3: Sağlık ve Kaliteli Yaşam">SDG-3: Good Health and Well-being</option>
+                        <option value="Diğer">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="aciklama">Description <span style="color:red">*</span></label>
+                    <textarea id="aciklama" name="aciklama" rows="5" required placeholder="Describe the issue in detail..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="rapor_foto">Upload Photo (Optional)</label>
+                    <input type="file" id="rapor_foto" name="rapor_foto" accept="image/*">
+                    <small style="color: var(--text-muted);">Supported: JPG, PNG. Max 5MB.</small>
+                </div>
+
+                <input type="hidden" id="enlem" name="enlem">
+                <input type="hidden" id="boylam" name="boylam">
+
+                <button type="submit" class="btn btn-primary btn-block" style="font-size: 1.1rem; padding: 15px;">Submit Report</button>
+            </form>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -165,10 +162,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         map.on('click', function(e) {
             var lat = e.latlng.lat;
             var lng = e.latlng.lng;
+            
+            // Update hidden inputs
             document.getElementById('enlem').value = lat;
             document.getElementById('boylam').value = lng;
-            document.getElementById('coord-text').innerText = `Seçilen: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-            if (marker) { marker.setLatLng(e.latlng); } else { marker = L.marker(e.latlng).addTo(map); }
+            
+            // Show success message
+            var msgDiv = document.getElementById('location-msg');
+            msgDiv.style.display = 'block';
+            msgDiv.innerHTML = `Location Selected ✅ (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
+            // Update marker
+            if (marker) { marker.setLatLng(e.latlng); } 
+            else { marker = L.marker(e.latlng).addTo(map); }
         });
     </script>
 </body>

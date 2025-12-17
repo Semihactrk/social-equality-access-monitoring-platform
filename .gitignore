@@ -1,0 +1,4 @@
+/admin/uploads/*
+/uploads/*
+db_connect.php
+.DS_Store

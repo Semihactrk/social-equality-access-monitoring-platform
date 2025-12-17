@@ -1,19 +1,19 @@
 <?php
-// Veritabanı bağlantı bilgileri
+// Database connection information
 $servername = "localhost";
 $username = "root";
 $password = "";
 $dbname = "sehrin_nabzi_db";
 
-// Bağlantıyı oluşturma
+// Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Karakter setini UTF-8 olarak ayarlama (Türkçe karakterler için önemli)
+// Set character set to UTF-8 (important for Turkish characters)
 $conn->set_charset("utf8mb4");
 
-// Bağlantıyı kontrol etme
+// Check connection
 if ($conn->connect_error) {
-    // Bağlantı başarısız olursa, hatayı göster ve programı sonlandır
+    // If connection fails, show error and terminate program
     die("Veritabanı bağlantısı başarısız: " . $conn->connect_error);
 }
 ?>
