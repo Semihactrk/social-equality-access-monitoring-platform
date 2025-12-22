@@ -1,20 +1,20 @@
 <?php
 session_start();
-// Yetkili koruması
+// Official protection
 if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'yetkili') {
     header("Location: index.php");
     exit();
 }
 
-// Formun POST metodu ile ve rapor_id ile geldiğinden emin ol
+// Ensure the form comes with POST method and report_id
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['rapor_id'])) {
     
     require_once 'includes/db_connect.php';
     
     $rapor_id = $_POST['rapor_id'];
-    $yetkili_id = $_SESSION['user_id']; // Raporu üstlenen yetkilinin ID'si
+    $yetkili_id = $_SESSION['user_id']; // ID of the official taking over the report
 
-    // Sadece hala 'beklemede' durumundaysa güncelle (aynı anda iki kişinin üstlenmesini engeller)
+    // Update only if it is still in 'beklemede' (pending) status (prevents two people from taking over at the same time)
     $sql = "UPDATE raporlar SET durum = 'islemde', ustlenen_yetkili_id = ? WHERE id = ? AND durum = 'beklemede'";
     
     if ($stmt = $conn->prepare($sql)) {
@@ -25,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['rapor_id'])) {
     $conn->close();
 }
 
-// İşlem bittikten sonra yetkili paneline geri yönlendir
+// Redirect back to the official panel after the operation is complete
 header("Location: official_panel.php");
 exit();
 ?>

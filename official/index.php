@@ -1,16 +1,20 @@
 <?php
 session_start();
-// Yetkili koruması
+// Official protection
 if (!isset($_SESSION['user_id']) || $_SESSION['rol'] !== 'yetkili') {
     header("Location: index.php");
     exit();
 }
 
-require_once 'includes/db_connect.php';
+require_once '../includes/db_connect.php';
 $yetkili_id = $_SESSION['user_id'];
 
+<<<<<<< HEAD:official_panel.php
 // 1. Üstlenilecek Raporları Çek (durum = 'beklemede')
 // GÜNCELLEME: fotograf_yolu ve sdg_kategori eklendi
+=======
+// 1. Fetch Reports to be Claimed (status = 'beklemede')
+>>>>>>> 45149d1a23e4b2ac6b310183c0abe8d99cd538c3:official/index.php
 $bekleyen_raporlar = [];
 $sql_bekleyen = "SELECT id, baslik, aciklama, olusturma_tarihi, fotograf_yolu, sdg_kategori 
                  FROM raporlar WHERE durum = 'beklemede' ORDER BY olusturma_tarihi DESC";
@@ -21,8 +25,12 @@ if ($result_bekleyen) {
     }
 }
 
+<<<<<<< HEAD:official_panel.php
 // 2. Bu Yetkilinin Üstlendiği Raporları Çek (durum = 'islemde' VE ustlenen_yetkili_id = kendi ID'si)
 // GÜNCELLEME: fotograf_yolu ve sdg_kategori eklendi
+=======
+// 2. Fetch Reports Claimed by This Official (status = 'islemde' AND ustlenen_yetkili_id = own ID)
+>>>>>>> 45149d1a23e4b2ac6b310183c0abe8d99cd538c3:official/index.php
 $islemdeki_raporlar = [];
 $sql_islemde = "SELECT id, baslik, aciklama, olusturma_tarihi, fotograf_yolu, sdg_kategori 
                 FROM raporlar WHERE durum = 'islemde' AND ustlenen_yetkili_id = ? ORDER BY olusturma_tarihi DESC";
