@@ -102,39 +102,59 @@ $reports_json = json_encode($reports);
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <script>
+        // Harita ayarları
         var map = L.map('map', { zoomControl: false }).setView([41.015137, 28.979530], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
         L.control.zoom({ position: 'topright' }).addTo(map);
 
+        // Değişkenler
         var currentMode = 'driving';
         var routeData = { driving: null, walking: null };
         var currentWaypoints = [];
         var clickedPoints = []; 
 
+        // Araba rotası için kontrol
         var control = L.Routing.control({
-            waypoints: [], routeWhileDragging: false, addWaypoints: false,
+            waypoints: [], 
+            routeWhileDragging: false, 
+            addWaypoints: false,
             createMarker: function() { return null; },
-            router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1', profile: 'car' }),
+            router: L.Routing.osrmv1({ 
+                serviceUrl: 'https://router.project-osrm.org/route/v1', 
+                profile: 'car' 
+            }),
             lineOptions: { styles: [{color: '#00AED9', opacity: 0.7, weight: 6}] },
-            show: true, collapsible: true, containerClassName: 'routing-panel-car'
+            show: true, 
+            collapsible: true, 
+            containerClassName: 'routing-panel-car'
         }).addTo(map);
 
+        // Yürüyüş rotası için kontrol
         var walkingControl = L.Routing.control({
-            waypoints: [], routeWhileDragging: false, addWaypoints: false,
+            waypoints: [], 
+            routeWhileDragging: false, 
+            addWaypoints: false,
             createMarker: function() { return null; },
-            router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1', profile: 'foot' }),
+            router: L.Routing.osrmv1({ 
+                serviceUrl: 'https://router.project-osrm.org/route/v1', 
+                profile: 'foot' 
+            }),
             lineOptions: { styles: [{color: '#27ae60', opacity: 0.7, weight: 6}] },
-            show: true, collapsible: true, containerClassName: 'routing-panel-walk'
+            show: true, 
+            collapsible: true, 
+            containerClassName: 'routing-panel-walk'
         });
 
         function switchRouteMode(mode) {
             currentMode = mode;
+            
+            // Buton stillerini güncelle
             document.getElementById('btn-driving').classList.toggle('active', mode === 'driving');
             document.getElementById('btn-walking').classList.toggle('active', mode === 'walking');
-            
             document.getElementById('carInfo').classList.toggle('active', mode === 'driving');
             document.getElementById('walkInfo').classList.toggle('active', mode === 'walking');
             
+            // Eğer henüz rota yoksa sadece kontrolleri değiştir
             if (currentWaypoints.length === 0) {
                 if (mode === 'driving') {
                     if (walkingControl._map) map.removeControl(walkingControl);
@@ -145,6 +165,8 @@ $reports_json = json_encode($reports);
                 }
                 return;
             }
+            
+            // Rota varsa, seçilen moda göre haritada göster
             if (mode === 'driving') {
                 if (walkingControl._map) map.removeControl(walkingControl);
                 if (!control._map) control.addTo(map);
@@ -157,9 +179,23 @@ $reports_json = json_encode($reports);
         }
 
         function clearRoute() {
-            currentWaypoints = []; clickedPoints = []; routeData = {driving:null, walking:null};
+            // Tüm verileri sıfırla
+            currentWaypoints = []; 
+            clickedPoints = []; 
+            routeData = {driving:null, walking:null};
+            
+            // Bilgi panelini gizle
             document.getElementById('routeInfoPanel').classList.remove('show');
-            try { control.setWaypoints([]); walkingControl.setWaypoints([]); } catch(e){}
+            document.getElementById('carDistance').textContent = '--';
+            document.getElementById('carTime').textContent = '--';
+            document.getElementById('walkDistance').textContent = '--';
+            document.getElementById('walkTime').textContent = '--';
+            
+            // Haritadaki rotaları temizle
+            try { 
+                control.setWaypoints([]); 
+                walkingControl.setWaypoints([]);
+            } catch(e){}
         }
 
         function formatTime(seconds) {
@@ -169,52 +205,123 @@ $reports_json = json_encode($reports);
             return h > 0 ? h + 'h ' + m + 'm' : m + ' min';
         }
 
+        function getRouteData(waypoints, profile, callback) {
+            if (waypoints.length < 2) return;
+            
+            // Koordinatları API formatına çevir
+            var coords = waypoints.map(function(wp) {
+                return wp.lng + ',' + wp.lat;
+            }).join(';');
+            
+            var url = 'https://router.project-osrm.org/route/v1/' + profile + '/' + coords + '?overview=false';
+            
+            fetch(url)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                        var route = data.routes[0];
+                        callback({
+                            distance: route.distance,
+                            time: route.duration
+                        });
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Rota hesaplama hatası:', error);
+                });
+        }
+
         function calculateBothRoutes(waypoints) {
             if (waypoints.length < 2) return;
             currentWaypoints = waypoints;
-            control.setWaypoints(waypoints);
-            walkingControl.setWaypoints(waypoints);
+            routeData = {driving: null, walking: null};
+            
+            // Araba rotası hesapla
+            getRouteData(waypoints, 'driving', function(result) {
+                routeData.driving = result;
+                
+                // Yürüyüş süresini mesafeye göre hesapla
+                var walkSpeed = 1.39;
+                var walkTime = result.distance / walkSpeed;
+                
+                routeData.walking = {
+                    distance: result.distance,
+                    time: walkTime
+                };
+                
+                updateRouteInfo();
+            });
+            
+            // Seçili moda göre haritada göster
+            if (currentMode === 'driving') {
+                control.setWaypoints(waypoints);
+            } else {
+                walkingControl.setWaypoints(waypoints);
+            }
         }
 
         function updateRouteInfo() {
             if (routeData.driving || routeData.walking) {
                 document.getElementById('routeInfoPanel').classList.add('show');
+                
                 if (routeData.driving) {
-                    document.getElementById('carDistance').textContent = (routeData.driving.distance / 1000).toFixed(1) + ' km';
-                    document.getElementById('carTime').textContent = formatTime(routeData.driving.time);
+                    var carDist = (routeData.driving.distance / 1000).toFixed(1) + ' km';
+                    var carTime = formatTime(routeData.driving.time);
+                    document.getElementById('carDistance').textContent = carDist;
+                    document.getElementById('carTime').textContent = carTime;
                 }
+                
                 if (routeData.walking) {
-                    document.getElementById('walkDistance').textContent = (routeData.walking.distance / 1000).toFixed(1) + ' km';
-                    document.getElementById('walkTime').textContent = formatTime(routeData.walking.time);
+                    var walkDist = (routeData.walking.distance / 1000).toFixed(1) + ' km';
+                    var walkTime = formatTime(routeData.walking.time);
+                    document.getElementById('walkDistance').textContent = walkDist;
+                    document.getElementById('walkTime').textContent = walkTime;
                 }
             }
         }
 
+        // Haritaya tıklanınca rota çiz
         map.on('click', function (e) {
-            if (clickedPoints.length >= 2) { clearRoute(); clickedPoints = [e.latlng]; } 
-            else { clickedPoints.push(e.latlng); }
-            if (clickedPoints.length > 0) calculateBothRoutes(clickedPoints.length == 1 ? [clickedPoints[0]] : clickedPoints);
+            if (clickedPoints.length >= 2) { 
+                clearRoute(); 
+                clickedPoints = [e.latlng]; 
+            } else { 
+                clickedPoints.push(e.latlng); 
+            }
+            
+            if (clickedPoints.length > 0) {
+                var points = clickedPoints.length == 1 ? [clickedPoints[0]] : clickedPoints;
+                calculateBothRoutes(points);
+            }
         });
-        map.on('contextmenu', function (e) { clearRoute(); });
+        
+        // Sağ tıklanınca rotayı temizle
+        map.on('contextmenu', function (e) { 
+            clearRoute(); 
+        });
 
-        control.on('routesfound', function(e) {
-            routeData.driving = { distance: e.routes[0].summary.totalDistance, time: e.routes[0].summary.totalTime };
-            updateRouteInfo();
-        });
-        walkingControl.on('routesfound', function(e) {
-            routeData.walking = { distance: e.routes[0].summary.totalDistance, time: e.routes[0].summary.totalTime };
-            updateRouteInfo();
-        });
-
+        // Raporları haritaya ekle
         var reportsData = <?php echo $reports_json; ?>;
         reportsData.forEach(function(report) {
             if(report.enlem && report.boylam) {
+                // Duruma göre marker rengi belirle
                 var iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
-                if(report.durum === 'cozuldu') iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
-                if(report.durum === 'isleme_alindi') iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+                if(report.durum === 'cozuldu') {
+                    iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png';
+                }
+                if(report.durum === 'isleme_alindi') {
+                    iconUrl = 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png';
+                }
                 
                 var marker = L.marker([report.enlem, report.boylam], { 
-                    icon: L.icon({iconUrl: iconUrl, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]})
+                    icon: L.icon({
+                        iconUrl: iconUrl, 
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', 
+                        iconSize: [25, 41], 
+                        iconAnchor: [12, 41], 
+                        popupAnchor: [1, -34], 
+                        shadowSize: [41, 41]
+                    })
                 }).addTo(map);
 
                 var popup = `<div style="min-width:180px">
